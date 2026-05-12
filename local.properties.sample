@@ -1,0 +1,4 @@
+# Android SDK のパスを設定してください
+# Windows 例: sdk.dir=C\:\\Users\\YourName\\AppData\\Local\\Android\\Sdk
+# Mac 例:     sdk.dir=/Users/YourName/Library/Android/sdk
+sdk.dir=/Users/YourName/Library/Android/sdk
