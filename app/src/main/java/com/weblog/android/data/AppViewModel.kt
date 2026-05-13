@@ -14,6 +14,8 @@ import kotlinx.coroutines.launch
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+data class NumberedQSO(val no: Int, val qso: QSO)
+
 class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dao = QSODatabase.getInstance(application).qsoDao()
@@ -33,6 +35,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     val qsos: StateFlow<List<QSO>> = _currentCall
         .flatMapLatest { call -> if (call.isEmpty()) flowOf(emptyList()) else dao.getAll(call) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * 全 QSO に古い順の通し番号 (No) を付与したリスト。
+     * フィルタ前後でも番号は変わらない。一覧表示は新しい順(降順)で扱う側で並び替える。
+     */
+    val numberedQsos: StateFlow<List<NumberedQSO>> = qsos
+        .map { list ->
+            list.sortedWith(compareBy({ it.date }, { it.time }))
+                .mapIndexed { i, q -> NumberedQSO(i + 1, q) }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.weblog.android.data.AppViewModel
+import com.weblog.android.data.NumberedQSO
 import com.weblog.android.data.QSO
 import com.weblog.android.utils.BANDS
 import com.weblog.android.utils.MODES
@@ -32,19 +33,20 @@ fun LogListScreen(
     currentCall: String,
     onEdit: (QSO) -> Unit
 ) {
-    val qsos by vm.qsos.collectAsState()
+    val numbered by vm.numberedQsos.collectAsState()
     var searchText by remember { mutableStateOf("") }
     var filterBand by remember { mutableStateOf("") }
     var filterMode by remember { mutableStateOf("") }
     var deleteTarget by remember { mutableStateOf<QSO?>(null) }
 
-    val filtered = remember(qsos, searchText, filterBand, filterMode) {
-        qsos.filter { q ->
+    // フィルタは全件 (NumberedQSO 単位) で実施、その後 No 降順で表示
+    val filtered = remember(numbered, searchText, filterBand, filterMode) {
+        numbered.asSequence().filter { (_, q) ->
             (searchText.isEmpty() || listOf(q.callsign, q.name, q.qth, q.comment)
                 .any { it.contains(searchText, ignoreCase = true) }) &&
             (filterBand.isEmpty() || q.band == filterBand) &&
             (filterMode.isEmpty() || q.mode == filterMode)
-        }
+        }.sortedByDescending { it.no }.toList()
     }
 
     // 表示は最新 300 件まで（残りはフィルタ・検索で絞り込んで確認）
@@ -53,9 +55,9 @@ fun LogListScreen(
         filtered.take(displayLimit)
     }
 
-    val jccCount = remember(filtered) { filtered.map { it.jcc }.filter { it.isNotEmpty() }.toSet().size }
+    val jccCount = remember(filtered) { filtered.map { it.qso.jcc }.filter { it.isNotEmpty() }.toSet().size }
     val bandStats = remember(filtered) {
-        filtered.groupBy { it.band }.filter { it.key.isNotEmpty() }
+        filtered.groupBy { it.qso.band }.filter { it.key.isNotEmpty() }
             .map { "${it.key}:${it.value.size}" }.joinToString("  ")
     }
 
@@ -107,12 +109,13 @@ fun LogListScreen(
                 stickyHeader {
                     QSOHeaderRow(scrollState = hScroll)
                 }
-                items(visibleList, key = { it.id }) { qso ->
+                items(visibleList, key = { it.qso.id }) { nq ->
                     QSORow(
-                        qso = qso,
+                        no = nq.no,
+                        qso = nq.qso,
                         scrollState = hScroll,
-                        onEdit = { onEdit(qso) },
-                        onDelete = { deleteTarget = qso }
+                        onEdit = { onEdit(nq.qso) },
+                        onDelete = { deleteTarget = nq.qso }
                     )
                     HorizontalDivider(thickness = 0.5.dp)
                 }
@@ -165,6 +168,7 @@ fun LogListScreen(
 }
 
 // 表形式列幅
+private val W_NO = 56.dp
 private val W_DATE = 76.dp
 private val W_TIME = 44.dp
 private val W_CALL = 110.dp
@@ -189,6 +193,7 @@ fun QSOHeaderRow(scrollState: androidx.compose.foundation.ScrollState) {
                 .padding(vertical = 6.dp, horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            HeaderCell("No", W_NO)
             HeaderCell("日付", W_DATE)
             HeaderCell("時刻", W_TIME)
             HeaderCell("コールサイン", W_CALL)
@@ -222,6 +227,7 @@ private fun HeaderCell(text: String, width: Dp) {
 
 @Composable
 fun QSORow(
+    no: Int,
     qso: QSO,
     scrollState: androidx.compose.foundation.ScrollState,
     onEdit: () -> Unit,
@@ -235,6 +241,7 @@ fun QSORow(
             .padding(vertical = 4.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Cell(no.toString(), W_NO, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Cell(qso.date, W_DATE)
         Cell(qso.time, W_TIME)
         Cell(qso.callsign, W_CALL, bold = true, color = MaterialTheme.colorScheme.primary)
