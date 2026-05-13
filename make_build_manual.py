@@ -581,6 +581,7 @@ run.font.size = Pt(9)
 set_font(run)
 run.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
 
-out = '/Users/kazuichishinjo/Desktop/WebLogAndroid/WebLog_Android_ビルド手順書.docx'
+import os
+out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'WebLog_Android_ビルド手順書.docx')
 doc.save(out)
 print(f'保存: {out}')
