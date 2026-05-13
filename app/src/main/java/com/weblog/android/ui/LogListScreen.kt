@@ -134,7 +134,7 @@ fun LogListScreen(
             // Stats
             Surface(tonalElevation = 1.dp) {
                 Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    Text("総交信数: ${filtered.size}  表示: ${visibleList.size}  JCC: $jccCount",
+                    Text("総交信数: ${filtered.size}  JCC: $jccCount",
                         style = MaterialTheme.typography.labelSmall)
                     if (bandStats.isNotEmpty()) {
                         Text(bandStats, style = MaterialTheme.typography.labelSmall)
