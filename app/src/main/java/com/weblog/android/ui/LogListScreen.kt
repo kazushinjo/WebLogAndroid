@@ -1,6 +1,7 @@
 package com.weblog.android.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -229,6 +230,7 @@ fun QSORow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onEdit() }
             .horizontalScroll(scrollState)
             .padding(vertical = 4.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
