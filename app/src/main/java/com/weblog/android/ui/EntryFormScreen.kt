@@ -1,7 +1,10 @@
 package com.weblog.android.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -13,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -27,6 +31,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EntryFormScreen(
     vm: AppViewModel,
@@ -36,6 +41,7 @@ fun EntryFormScreen(
 ) {
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
+    val commentBringIntoView = remember { BringIntoViewRequester() }
 
     var callsign by remember { mutableStateOf("") }
     var date by remember { mutableStateOf("") }
@@ -79,6 +85,7 @@ fun EntryFormScreen(
         if (editingQSO != null) populate(editingQSO) else { reset(); setNow() }
     }
 
+    Box(modifier = Modifier.fillMaxSize().imePadding()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -281,7 +288,10 @@ fun EntryFormScreen(
                 comment = if (bare.contains("移動地")) "%$bare%" else bare
             },
             label = { Text("備考") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(commentBringIntoView)
+                .onFocusChanged { if (it.isFocused) scope.launch { commentBringIntoView.bringIntoView() } },
             minLines = 2
         )
 
@@ -318,6 +328,7 @@ fun EntryFormScreen(
 
         Spacer(Modifier.height(32.dp))
     }
+    } // Box imePadding
 }
 
 @Composable
