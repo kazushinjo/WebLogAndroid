@@ -276,7 +276,10 @@ fun EntryFormScreen(
         // Comment
         OutlinedTextField(
             value = comment,
-            onValueChange = { comment = it },
+            onValueChange = { v ->
+                val bare = v.removePrefix("%").removeSuffix("%")
+                comment = if (bare.contains("移動地")) "%$bare%" else bare
+            },
             label = { Text("備考") },
             modifier = Modifier.fillMaxWidth(),
             minLines = 2

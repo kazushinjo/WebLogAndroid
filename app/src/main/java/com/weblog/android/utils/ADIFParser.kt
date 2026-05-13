@@ -81,11 +81,22 @@ object ADIFParser {
 
     fun toCsv(qsos: List<QSO>, myCall: String): String {
         val sb = StringBuilder()
-        sb.appendLine("コールサイン,日付,時刻,バンド,モード,RST送,RST受,名前,QTH,JCC,QSL,備考,自局")
+        sb.appendLine("コールサイン,日付,時刻,RST受,RST送,周波数,モード,JCC,,QSL,名前,QTH,備考１,備考２")
         for (q in qsos) {
-            sb.appendLine(listOf(q.callsign, q.date, q.time, q.band, q.mode,
-                q.rstSent, q.rstRcvd, q.name, q.qth, q.jcc, q.qsl, q.comment, myCall)
-                .joinToString(",") { "\"${it.replace("\"", "\"\"")}\"" })
+            // 日付 YYYYMMDD → YY/MM/DD (HAMLOG形式)
+            val d = q.date
+            val dateStr = if (d.length == 8)
+                "${d.substring(2, 4)}/${d.substring(4, 6)}/${d.substring(6, 8)}"
+            else d
+            // 時刻 HHMM → HHMMJ (JST表記)
+            val timeStr = "${q.time}J"
+            val cols = listOf(
+                q.callsign, dateStr, timeStr,
+                q.rstRcvd, q.rstSent, q.freq, q.mode,
+                q.jcc, "", q.qsl, q.name, q.qth,
+                q.comment, ""
+            )
+            sb.appendLine(cols.joinToString(",") { "\"${it.replace("\"", "\"\"")}\"" })
         }
         return sb.toString()
     }
@@ -194,7 +205,7 @@ object ADIFParser {
                 qth = col("QTH"),
                 jcc = col("JCC"),
                 qsl = col("QSL"),
-                comment = col("備考")
+                comment = col("備考１").ifEmpty { col("備考") }
             )
         }
     }
