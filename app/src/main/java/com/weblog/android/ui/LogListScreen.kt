@@ -107,20 +107,7 @@ fun LogListScreen(
         } else {
             val hScroll = rememberScrollState()
             val listState = rememberLazyListState()
-
-            // スクロール末尾近くで追加読み込み
-            val shouldLoadMore by remember {
-                derivedStateOf {
-                    val info = listState.layoutInfo
-                    val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
-                    last >= info.totalItemsCount - 5
-                }
-            }
-            LaunchedEffect(shouldLoadMore, filtered.size) {
-                if (shouldLoadMore && displayLimit < filtered.size) {
-                    displayLimit = (displayLimit + pageSize).coerceAtMost(filtered.size)
-                }
-            }
+            val remaining = filtered.size - visibleList.size
 
             LazyColumn(modifier = Modifier.weight(1f), state = listState) {
                 stickyHeader {
@@ -135,17 +122,25 @@ fun LogListScreen(
                     )
                     HorizontalDivider(thickness = 0.5.dp)
                 }
-                if (visibleList.size < filtered.size) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(8.dp),
-                            contentAlignment = Alignment.Center
+                if (remaining > 0) {
+                    item(key = "load-more") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                "残り ${filtered.size - visibleList.size} 件 (スクロールで追加読み込み)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Button(
+                                onClick = {
+                                    displayLimit = (displayLimit + pageSize).coerceAtMost(filtered.size)
+                                }
+                            ) {
+                                Text("次の ${minOf(pageSize, remaining)} 件を表示")
+                            }
+                            OutlinedButton(
+                                onClick = { displayLimit = filtered.size }
+                            ) {
+                                Text("全件表示 (残り $remaining 件)")
+                            }
                         }
                     }
                 }
