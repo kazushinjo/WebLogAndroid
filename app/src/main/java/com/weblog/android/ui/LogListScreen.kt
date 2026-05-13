@@ -5,7 +5,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -47,14 +46,9 @@ fun LogListScreen(
         }
     }
 
-    // 段階的表示 (300件ずつ)
-    val pageSize = 300
-    var displayLimit by remember { mutableStateOf(pageSize) }
-    // フィルタ条件が変わったら最初の300件にリセット
-    LaunchedEffect(searchText, filterBand, filterMode) {
-        displayLimit = pageSize
-    }
-    val visibleList = remember(filtered, displayLimit) {
+    // 表示は最新 300 件まで（残りはフィルタ・検索で絞り込んで確認）
+    val displayLimit = 300
+    val visibleList = remember(filtered) {
         filtered.take(displayLimit)
     }
 
@@ -106,10 +100,9 @@ fun LogListScreen(
             }
         } else {
             val hScroll = rememberScrollState()
-            val listState = rememberLazyListState()
             val remaining = filtered.size - visibleList.size
 
-            LazyColumn(modifier = Modifier.weight(1f), state = listState) {
+            LazyColumn(modifier = Modifier.weight(1f)) {
                 stickyHeader {
                     QSOHeaderRow(scrollState = hScroll)
                 }
@@ -123,24 +116,16 @@ fun LogListScreen(
                     HorizontalDivider(thickness = 0.5.dp)
                 }
                 if (remaining > 0) {
-                    item(key = "load-more") {
-                        Row(
+                    item(key = "more-info") {
+                        Box(
                             modifier = Modifier.fillMaxWidth().padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                            verticalAlignment = Alignment.CenterVertically
+                            contentAlignment = Alignment.Center
                         ) {
-                            Button(
-                                onClick = {
-                                    displayLimit = (displayLimit + pageSize).coerceAtMost(filtered.size)
-                                }
-                            ) {
-                                Text("次の ${minOf(pageSize, remaining)} 件を表示")
-                            }
-                            OutlinedButton(
-                                onClick = { displayLimit = filtered.size }
-                            ) {
-                                Text("全件表示 (残り $remaining 件)")
-                            }
+                            Text(
+                                "他に $remaining 件あります（検索/フィルタで絞り込んでください）",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
