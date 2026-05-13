@@ -243,7 +243,8 @@ fun EntryFormScreen(
                             headlineContent = { Text("${entry.pref} ${entry.city}") },
                             supportingContent = { Text(entry.id) },
                             modifier = Modifier.clickable {
-                                qth = entry.city; jcc = entry.id
+                                qth = "${entry.pref}${entry.city}"
+                                jcc = entry.id
                                 jccSuggestions = emptyList()
                             }
                         )
@@ -254,7 +255,7 @@ fun EntryFormScreen(
                 value = jcc,
                 onValueChange = { v ->
                     jcc = v
-                    JCCStore.lookup(v)?.let { e -> qth = e.city }
+                    JCCStore.lookup(v)?.let { e -> qth = "${e.pref}${e.city}" }
                 },
                 label = { Text("JCCコード") },
                 modifier = Modifier.fillMaxWidth(),
