@@ -90,6 +90,22 @@ object ADIFParser {
         return sb.toString()
     }
 
+    /**
+     * 自動判別 CSV パーサ。
+     * 1行目に "コールサイン" など日本語ヘッダが含まれていれば日本語ヘッダ式、
+     * そうでなければ HAMLOG 形式（ヘッダ無し、列固定順）として読む。
+     * 戻り値の second は判定種別（UIに表示する用）。
+     */
+    fun parseCsvAuto(text: String, myCall: String): Pair<List<QSO>, String> {
+        val firstLine = text.lineSequence().firstOrNull { it.isNotBlank() } ?: return emptyList<QSO>() to "empty"
+        val isJapaneseHeader = listOf("コールサイン", "呼出符号").any { firstLine.contains(it) }
+        return if (isJapaneseHeader) {
+            parseCsv(text, myCall) to "日本語ヘッダ"
+        } else {
+            parseHamlogCsv(text, myCall) to "HAMLOG"
+        }
+    }
+
     fun parseHamlogCsv(text: String, myCall: String): List<QSO> {
         return text.lines().filter { it.isNotBlank() }.mapNotNull { line ->
             val cols = parseCsvLine(line)

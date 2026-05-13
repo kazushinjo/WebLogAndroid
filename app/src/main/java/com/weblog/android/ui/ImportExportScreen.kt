@@ -104,23 +104,9 @@ fun ImportExportScreen(
         uri?.let {
             scope.launch {
                 val text = readTextAutoEncoding(context, it)
-                val imported = ADIFParser.parseCsv(text, currentCall)
+                val (imported, kind) = ADIFParser.parseCsvAuto(text, currentCall)
                 imported.forEach { q -> vm.insertQSO(q) }
-                vm.showToast("${imported.size}件インポートしました")
-                onDismiss()
-            }
-        }
-    }
-
-    val hamlogCsvImportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            scope.launch {
-                val text = readTextAutoEncoding(context, it)
-                val imported = ADIFParser.parseHamlogCsv(text, currentCall)
-                imported.forEach { q -> vm.insertQSO(q) }
-                vm.showToast("${imported.size}件インポートしました (HAMLOG)")
+                vm.showToast("${imported.size}件インポートしました ($kind)")
                 onDismiss()
             }
         }
@@ -177,12 +163,7 @@ fun ImportExportScreen(
                 onClick = { csvImportLauncher.launch("*/*") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = currentCall.isNotEmpty()
-            ) { Text("CSV インポート (日本語ヘッダ)") }
-            OutlinedButton(
-                onClick = { hamlogCsvImportLauncher.launch("*/*") },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = currentCall.isNotEmpty()
-            ) { Text("HAMLOG CSV インポート (PC版 weblog)") }
+            ) { Text("CSV インポート (HAMLOG / 日本語ヘッダ自動判別)") }
             OutlinedButton(
                 onClick = { jsonImportLauncher.launch("*/*") },
                 modifier = Modifier.fillMaxWidth(),
