@@ -98,8 +98,11 @@ object ADIFParser {
             if (call.isBlank()) return@mapNotNull null
 
             val date = parseHamlogDate((cols.getOrNull(1) ?: "").trim())
-            val time = (cols.getOrNull(2) ?: "").trim()
-                .trimEnd('J', 'j', 'U', 'u')
+            // 時刻は "11:01J", "1101J", "11:01", "1101" など様々な形式に対応
+            // 非数字を全て除去して 4桁化
+            val time = (cols.getOrNull(2) ?: "")
+                .replace(Regex("[^0-9]"), "")
+                .padEnd(4, '0')
                 .take(4)
             val rstRcvd = (cols.getOrNull(3) ?: "").trim()
             val rstSent = (cols.getOrNull(4) ?: "").trim()
