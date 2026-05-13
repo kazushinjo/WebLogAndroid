@@ -337,7 +337,7 @@ private fun ExportRangeDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 enabled = previewCount > 0,
                 onClick = {
                     val selected = computeExportTarget(numbered, mode, fromNo, toNo, fromDate, toDate)
@@ -346,7 +346,7 @@ private fun ExportRangeDialog(
             ) { Text("エクスポート") }
         },
         dismissButton = {
-            TextButton(onClick = onCancel) { Text("キャンセル") }
+            OutlinedButton(onClick = onCancel) { Text("キャンセル") }
         }
     )
 }
