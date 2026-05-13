@@ -5,6 +5,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -44,6 +45,17 @@ fun LogListScreen(
             (filterBand.isEmpty() || q.band == filterBand) &&
             (filterMode.isEmpty() || q.mode == filterMode)
         }
+    }
+
+    // 段階的表示 (300件ずつ)
+    val pageSize = 300
+    var displayLimit by remember { mutableStateOf(pageSize) }
+    // フィルタ条件が変わったら最初の300件にリセット
+    LaunchedEffect(searchText, filterBand, filterMode) {
+        displayLimit = pageSize
+    }
+    val visibleList = remember(filtered, displayLimit) {
+        filtered.take(displayLimit)
     }
 
     val jccCount = remember(filtered) { filtered.map { it.jcc }.filter { it.isNotEmpty() }.toSet().size }
@@ -94,11 +106,27 @@ fun LogListScreen(
             }
         } else {
             val hScroll = rememberScrollState()
-            LazyColumn(modifier = Modifier.weight(1f)) {
+            val listState = rememberLazyListState()
+
+            // スクロール末尾近くで追加読み込み
+            val shouldLoadMore by remember {
+                derivedStateOf {
+                    val info = listState.layoutInfo
+                    val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+                    last >= info.totalItemsCount - 5
+                }
+            }
+            LaunchedEffect(shouldLoadMore, filtered.size) {
+                if (shouldLoadMore && displayLimit < filtered.size) {
+                    displayLimit = (displayLimit + pageSize).coerceAtMost(filtered.size)
+                }
+            }
+
+            LazyColumn(modifier = Modifier.weight(1f), state = listState) {
                 stickyHeader {
                     QSOHeaderRow(scrollState = hScroll)
                 }
-                items(filtered, key = { it.id }) { qso ->
+                items(visibleList, key = { it.id }) { qso ->
                     QSORow(
                         qso = qso,
                         scrollState = hScroll,
@@ -107,12 +135,26 @@ fun LogListScreen(
                     )
                     HorizontalDivider(thickness = 0.5.dp)
                 }
+                if (visibleList.size < filtered.size) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "残り ${filtered.size - visibleList.size} 件 (スクロールで追加読み込み)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
 
             // Stats
             Surface(tonalElevation = 1.dp) {
                 Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    Text("総交信数: ${filtered.size}  JCC: $jccCount",
+                    Text("総交信数: ${filtered.size}  表示: ${visibleList.size}  JCC: $jccCount",
                         style = MaterialTheme.typography.labelSmall)
                     if (bandStats.isNotEmpty()) {
                         Text(bandStats, style = MaterialTheme.typography.labelSmall)
