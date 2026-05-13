@@ -14,9 +14,10 @@ import com.weblog.android.ui.WebLogApp
 import com.weblog.android.utils.JCCStore
 
 private val HighContrastLightColors = lightColorScheme(
-    onPrimary = Color.Black,
-    onSecondary = Color.Black,
-    onTertiary = Color.Black,
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+    onError = Color.White,
     onBackground = Color.Black,
     onSurface = Color.Black,
     onSurfaceVariant = Color.Black,

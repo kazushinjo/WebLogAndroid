@@ -90,6 +90,67 @@ object ADIFParser {
         return sb.toString()
     }
 
+    fun parseHamlogCsv(text: String, myCall: String): List<QSO> {
+        return text.lines().filter { it.isNotBlank() }.mapNotNull { line ->
+            val cols = parseCsvLine(line)
+            if (cols.size < 7) return@mapNotNull null
+            val call = (cols.getOrNull(0) ?: "").trim()
+            if (call.isBlank()) return@mapNotNull null
+
+            val date = parseHamlogDate((cols.getOrNull(1) ?: "").trim())
+            val time = (cols.getOrNull(2) ?: "").trim()
+                .trimEnd('J', 'j', 'U', 'u')
+                .take(4)
+            val rstRcvd = (cols.getOrNull(3) ?: "").trim()
+            val rstSent = (cols.getOrNull(4) ?: "").trim()
+            val freq = (cols.getOrNull(5) ?: "").trim()
+            val mode = (cols.getOrNull(6) ?: "").trim().ifEmpty { "SSB" }
+            val jcc = (cols.getOrNull(7) ?: "").trim()
+            val qsl = (cols.getOrNull(9) ?: "").trim()
+            val name = (cols.getOrNull(10) ?: "").trim()
+            val qth = (cols.getOrNull(11) ?: "").trim()
+            val rem1 = (cols.getOrNull(12) ?: "").trim()
+            val rem2 = (cols.getOrNull(13) ?: "").trim()
+            val comment = listOf(rem1, rem2).filter { it.isNotEmpty() }.joinToString(" ")
+
+            QSO(
+                myCall = myCall,
+                callsign = call,
+                date = date,
+                time = time,
+                band = freqToBand(freq.toDoubleOrNull() ?: 0.0),
+                freq = freq,
+                mode = mode,
+                rstSent = rstSent.ifEmpty { "59" },
+                rstRcvd = rstRcvd.ifEmpty { "59" },
+                name = name,
+                qth = qth,
+                jcc = jcc,
+                qsl = qsl,
+                comment = comment
+            )
+        }
+    }
+
+    private fun parseHamlogDate(s: String): String {
+        if (s.isBlank()) return ""
+        val parts = s.split('/', '-', '.').map { it.trim() }.filter { it.isNotBlank() }
+        if (parts.size != 3) return s.replace("/", "").replace("-", "").replace(".", "")
+        val yyRaw = parts[0]
+        val year = when (yyRaw.length) {
+            4 -> yyRaw
+            2 -> {
+                val n = yyRaw.toIntOrNull() ?: return s
+                // HAMLOG 慣習: 50以上は 19xx、50未満は 20xx
+                if (n >= 50) "19$yyRaw" else "20$yyRaw"
+            }
+            else -> return s
+        }
+        val mm = parts[1].padStart(2, '0').takeLast(2)
+        val dd = parts[2].padStart(2, '0').takeLast(2)
+        return "$year$mm$dd"
+    }
+
     fun parseCsv(text: String, myCall: String): List<QSO> {
         val lines = text.lines().filter { it.isNotBlank() }
         if (lines.size < 2) return emptyList()

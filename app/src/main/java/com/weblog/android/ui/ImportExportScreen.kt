@@ -13,11 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
+import com.google.gson.JsonParser
 import com.weblog.android.data.AppViewModel
 import com.weblog.android.data.QSO
 import com.weblog.android.utils.ADIFParser
+import com.weblog.android.utils.freqToBand
 import kotlinx.coroutines.launch
+import java.nio.charset.Charset
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -85,7 +89,7 @@ fun ImportExportScreen(
     ) { uri: Uri? ->
         uri?.let {
             scope.launch {
-                val text = context.contentResolver.openInputStream(it)?.bufferedReader()?.readText() ?: ""
+                val text = readTextAutoEncoding(context, it)
                 val imported = ADIFParser.parseAdif(text, currentCall)
                 imported.forEach { q -> vm.insertQSO(q) }
                 vm.showToast("${imported.size}件インポートしました")
@@ -99,10 +103,24 @@ fun ImportExportScreen(
     ) { uri: Uri? ->
         uri?.let {
             scope.launch {
-                val text = context.contentResolver.openInputStream(it)?.bufferedReader()?.readText() ?: ""
+                val text = readTextAutoEncoding(context, it)
                 val imported = ADIFParser.parseCsv(text, currentCall)
                 imported.forEach { q -> vm.insertQSO(q) }
                 vm.showToast("${imported.size}件インポートしました")
+                onDismiss()
+            }
+        }
+    }
+
+    val hamlogCsvImportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                val text = readTextAutoEncoding(context, it)
+                val imported = ADIFParser.parseHamlogCsv(text, currentCall)
+                imported.forEach { q -> vm.insertQSO(q) }
+                vm.showToast("${imported.size}件インポートしました (HAMLOG)")
                 onDismiss()
             }
         }
@@ -113,10 +131,9 @@ fun ImportExportScreen(
     ) { uri: Uri? ->
         uri?.let {
             scope.launch {
-                val text = context.contentResolver.openInputStream(it)?.bufferedReader()?.readText() ?: ""
-                val type = object : TypeToken<List<QSO>>() {}.type
-                val imported: List<QSO> = Gson().fromJson(text, type) ?: emptyList()
-                imported.forEach { q -> vm.insertQSO(q.copy(myCall = currentCall)) }
+                val text = readTextAutoEncoding(context, it)
+                val imported = parseWebLogJson(text, currentCall)
+                imported.forEach { q -> vm.insertQSO(q) }
                 vm.showToast("${imported.size}件復元しました")
                 onDismiss()
             }
@@ -160,7 +177,12 @@ fun ImportExportScreen(
                 onClick = { csvImportLauncher.launch("*/*") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = currentCall.isNotEmpty()
-            ) { Text("CSV インポート") }
+            ) { Text("CSV インポート (日本語ヘッダ)") }
+            OutlinedButton(
+                onClick = { hamlogCsvImportLauncher.launch("*/*") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = currentCall.isNotEmpty()
+            ) { Text("HAMLOG CSV インポート (PC版 weblog)") }
             OutlinedButton(
                 onClick = { jsonImportLauncher.launch("*/*") },
                 modifier = Modifier.fillMaxWidth(),
@@ -198,6 +220,79 @@ fun ImportExportScreen(
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("キャンセル") }
             }
+        )
+    }
+}
+
+private fun readTextAutoEncoding(context: android.content.Context, uri: Uri): String {
+    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return ""
+    // UTF-8 BOM
+    if (bytes.size >= 3 &&
+        bytes[0] == 0xEF.toByte() &&
+        bytes[1] == 0xBB.toByte() &&
+        bytes[2] == 0xBF.toByte()
+    ) {
+        return String(bytes, 3, bytes.size - 3, Charsets.UTF_8)
+    }
+    // UTF-8 として valid ならそれを採用、ダメなら Shift_JIS にフォールバック
+    return try {
+        val decoder = Charsets.UTF_8.newDecoder().apply {
+            onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+            onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+        }
+        decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString()
+    } catch (_: Exception) {
+        try {
+            String(bytes, Charset.forName("Shift_JIS"))
+        } catch (_: Exception) {
+            String(bytes, Charsets.UTF_8)
+        }
+    }
+}
+
+private fun parseWebLogJson(text: String, myCall: String): List<QSO> {
+    if (text.isBlank()) return emptyList()
+    val root: JsonElement = try {
+        JsonParser.parseString(text)
+    } catch (_: Exception) {
+        return emptyList()
+    }
+    val array: JsonArray = when {
+        root.isJsonArray -> root.asJsonArray
+        root.isJsonObject && root.asJsonObject.has("qsos") &&
+            root.asJsonObject.get("qsos").isJsonArray -> root.asJsonObject.getAsJsonArray("qsos")
+        else -> return emptyList()
+    }
+
+    fun JsonElement.str(key: String): String {
+        if (!isJsonObject) return ""
+        val e = asJsonObject.get(key) ?: return ""
+        return if (e.isJsonNull) "" else e.asString
+    }
+
+    return array.mapNotNull { el ->
+        if (!el.isJsonObject) return@mapNotNull null
+        val call = el.str("callsign").trim().ifEmpty { return@mapNotNull null }
+        val freq = el.str("freq").trim()
+        val explicitBand = el.str("band").trim()
+        val band = explicitBand.ifEmpty { freqToBand(freq.toDoubleOrNull() ?: 0.0) }
+        val mode = el.str("mode").trim().ifEmpty { "SSB" }
+        QSO(
+            myCall = myCall,
+            callsign = call,
+            date = el.str("date").trim(),
+            time = el.str("time").trim(),
+            band = band,
+            freq = freq,
+            mode = mode,
+            rstSent = el.str("rstSent").trim().ifEmpty { "59" },
+            rstRcvd = el.str("rstRcvd").trim().ifEmpty { "59" },
+            name = el.str("name").trim(),
+            qth = el.str("qth").trim(),
+            jcc = el.str("jcc").trim(),
+            qsl = el.str("qsl").trim(),
+            // PC版は "remarks" / Android は "comment"
+            comment = el.str("comment").ifEmpty { el.str("remarks") }.trim()
         )
     }
 }
