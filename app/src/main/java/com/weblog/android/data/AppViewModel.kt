@@ -80,6 +80,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun insertQSO(qso: QSO) = viewModelScope.launch { dao.insert(qso) }
+    fun insertAll(qsos: List<QSO>) = viewModelScope.launch { dao.insertAll(qsos) }
     fun updateQSO(qso: QSO) = viewModelScope.launch { dao.update(qso) }
     fun deleteQSO(qso: QSO) = viewModelScope.launch { dao.delete(qso) }
     fun deleteAll() = viewModelScope.launch { dao.deleteAll(_currentCall.value) }

@@ -91,7 +91,7 @@ fun ImportExportScreen(
             scope.launch {
                 val text = readTextAutoEncoding(context, it)
                 val imported = ADIFParser.parseAdif(text, currentCall)
-                imported.forEach { q -> vm.insertQSO(q) }
+                vm.insertAll(imported)
                 vm.showToast("${imported.size}件インポートしました")
                 onDismiss()
             }
@@ -105,7 +105,7 @@ fun ImportExportScreen(
             scope.launch {
                 val text = readTextAutoEncoding(context, it)
                 val (imported, kind) = ADIFParser.parseCsvAuto(text, currentCall)
-                imported.forEach { q -> vm.insertQSO(q) }
+                vm.insertAll(imported)
                 vm.showToast("${imported.size}件インポートしました ($kind)")
                 onDismiss()
             }
@@ -119,7 +119,7 @@ fun ImportExportScreen(
             scope.launch {
                 val text = readTextAutoEncoding(context, it)
                 val imported = parseWebLogJson(text, currentCall)
-                imported.forEach { q -> vm.insertQSO(q) }
+                vm.insertAll(imported)
                 vm.showToast("${imported.size}件復元しました")
                 onDismiss()
             }

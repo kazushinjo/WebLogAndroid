@@ -11,6 +11,9 @@ interface QSODao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(qso: QSO)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(qsos: List<QSO>)
+
     @Update
     suspend fun update(qso: QSO)
 
