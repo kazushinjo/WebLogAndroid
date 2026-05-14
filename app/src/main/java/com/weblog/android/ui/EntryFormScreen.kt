@@ -18,9 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.weblog.android.data.AppViewModel
 import com.weblog.android.data.CallsignSuggestion
@@ -98,7 +102,7 @@ fun EntryFormScreen(
             OutlinedTextField(
                 value = callsign,
                 onValueChange = { v ->
-                    callsign = v.uppercase()
+                    callsign = v.uppercase().filter { it in 'A'..'Z' || it in '0'..'9' }
                     scope.launch {
                         duplicates = if (v.length >= 2) vm.findDuplicates(v.uppercase()) else emptyList()
                         callSuggestions = if (v.length >= 2) vm.suggestCallsigns(v.uppercase()) else emptyList()
@@ -107,6 +111,7 @@ fun EntryFormScreen(
                 label = { Text("コールサイン") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Ascii,
                     capitalization = KeyboardCapitalization.Characters,
                     imeAction = ImeAction.Next
                 ),
@@ -144,15 +149,16 @@ fun EntryFormScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = date,
-                onValueChange = { date = it },
+                onValueChange = { v -> date = v.filter { it.isDigit() }.take(8) },
                 label = { Text("日付(YYYYMMDD)") },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                visualTransformation = DateVisualTransformation(),
                 singleLine = true
             )
             OutlinedTextField(
                 value = time,
-                onValueChange = { time = it },
+                onValueChange = { v -> time = v.filter { it.isDigit() }.take(4) },
                 label = { Text("時刻(HHMM)") },
                 modifier = Modifier.weight(1f),
                 trailingIcon = {
@@ -161,6 +167,7 @@ fun EntryFormScreen(
                     }
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                visualTransformation = TimeVisualTransformation(),
                 singleLine = true
             )
         }
@@ -261,12 +268,12 @@ fun EntryFormScreen(
             OutlinedTextField(
                 value = jcc,
                 onValueChange = { v ->
-                    jcc = v
-                    JCCStore.lookup(v)?.let { e -> qth = "${e.pref}${e.city}" }
+                    jcc = v.uppercase().filter { it in 'A'..'Z' || it in '0'..'9' }
+                    JCCStore.lookup(jcc)?.let { e -> qth = "${e.pref}${e.city}" }
                 },
                 label = { Text("JCCコード") },
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Next),
                 singleLine = true
             )
         }
@@ -323,7 +330,7 @@ fun EntryFormScreen(
             modifier = Modifier.fillMaxWidth(),
             enabled = callsign.isNotEmpty() && currentCall.isNotEmpty()
         ) {
-            Text(if (editingQSO != null) "更新" else "入力")
+            Text(if (editingQSO != null) "更新" else "登録")
         }
 
         Spacer(Modifier.height(32.dp))
@@ -361,5 +368,53 @@ fun DropdownField(
                 )
             }
         }
+    }
+}
+
+class DateVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val trimmed = text.text.take(8)
+        val out = StringBuilder()
+        for (i in trimmed.indices) {
+            out.append(trimmed[i])
+            if (i == 3 || i == 5) out.append('/')
+        }
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = when {
+                offset <= 3 -> offset
+                offset <= 5 -> offset + 1
+                offset <= 8 -> offset + 2
+                else -> 10
+            }
+            override fun transformedToOriginal(offset: Int): Int = when {
+                offset <= 3 -> offset
+                offset <= 6 -> (offset - 1).coerceAtMost(8)
+                else -> (offset - 2).coerceAtMost(8)
+            }
+        }
+        return TransformedText(AnnotatedString(out.toString()), offsetMapping)
+    }
+}
+
+class TimeVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val trimmed = text.text.take(4)
+        val out = StringBuilder()
+        for (i in trimmed.indices) {
+            out.append(trimmed[i])
+            if (i == 1) out.append(':')
+        }
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = when {
+                offset <= 1 -> offset
+                offset <= 4 -> offset + 1
+                else -> 5
+            }
+            override fun transformedToOriginal(offset: Int): Int = when {
+                offset <= 1 -> offset
+                else -> (offset - 1).coerceAtMost(4)
+            }
+        }
+        return TransformedText(AnnotatedString(out.toString()), offsetMapping)
     }
 }
