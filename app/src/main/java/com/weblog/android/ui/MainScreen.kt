@@ -2,6 +2,7 @@ package com.weblog.android.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -75,7 +76,7 @@ fun MainScreen(vm: AppViewModel) {
                     Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 },
                         text = { Text("登録") }, icon = { Icon(Icons.Default.Edit, null) })
                     Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 },
-                        text = { Text("記録一覧") }, icon = { Icon(Icons.Default.List, null) })
+                        text = { Text("記録一覧") }, icon = { Icon(Icons.AutoMirrored.Filled.List, null) })
                 }
                 when (selectedTab) {
                     0 -> EntryFormScreen(

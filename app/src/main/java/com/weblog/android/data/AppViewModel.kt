@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -33,6 +34,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage: StateFlow<String?> = _toastMessage
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val qsos: StateFlow<List<QSO>> = _currentCall
         .flatMapLatest { call -> if (call.isEmpty()) flowOf(emptyList()) else dao.getAll(call) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
