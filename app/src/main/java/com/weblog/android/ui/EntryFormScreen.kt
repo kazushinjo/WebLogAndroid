@@ -19,10 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -59,7 +61,7 @@ fun EntryFormScreen(
     var qth by remember { mutableStateOf("") }
     var jcc by remember { mutableStateOf("") }
     var qsl by remember { mutableStateOf("") }
-    var comment by remember { mutableStateOf("") }
+    var comment by remember { mutableStateOf(TextFieldValue("")) }
 
     var duplicates by remember { mutableStateOf<List<QSO>>(emptyList()) }
     var callSuggestions by remember { mutableStateOf<List<CallsignSuggestion>>(emptyList()) }
@@ -75,12 +77,12 @@ fun EntryFormScreen(
         callsign = q.callsign; date = q.date; time = q.time
         freq = q.freq; band = q.band; mode = q.mode
         rstSent = q.rstSent; rstRcvd = q.rstRcvd
-        name = q.name; qth = q.qth; jcc = q.jcc; qsl = q.qsl; comment = q.comment
+        name = q.name; qth = q.qth; jcc = q.jcc; qsl = q.qsl; comment = TextFieldValue(q.comment)
     }
 
     fun reset() {
         callsign = ""; date = ""; time = ""; freq = ""; band = ""; mode = "SSB"
-        rstSent = "59"; rstRcvd = "59"; name = ""; qth = ""; jcc = ""; qsl = ""; comment = ""
+        rstSent = "59"; rstRcvd = "59"; name = ""; qth = ""; jcc = ""; qsl = ""; comment = TextFieldValue("")
         duplicates = emptyList(); callSuggestions = emptyList(); jccSuggestions = emptyList()
         setNow()
     }
@@ -291,8 +293,15 @@ fun EntryFormScreen(
         OutlinedTextField(
             value = comment,
             onValueChange = { v ->
-                val bare = v.removePrefix("%").removeSuffix("%")
-                comment = if (bare.contains("移動地")) "%$bare%" else bare
+                val bare = v.text.removePrefix("%").removeSuffix("%")
+                comment = if (bare.contains("移動地")) {
+                    val newText = "%$bare%"
+                    val leadingAdded = if (v.text.startsWith("%")) 0 else 1
+                    val newCursor = minOf(v.selection.end + leadingAdded, newText.length - 1)
+                    TextFieldValue(newText, TextRange(newCursor))
+                } else {
+                    v.copy(text = bare)
+                }
             },
             label = { Text("備考") },
             modifier = Modifier
@@ -311,7 +320,7 @@ fun EntryFormScreen(
                         callsign = callsign, date = date, time = time,
                         freq = freq, band = band, mode = mode,
                         rstSent = rstSent, rstRcvd = rstRcvd,
-                        name = name, qth = qth, jcc = jcc, qsl = qsl, comment = comment
+                        name = name, qth = qth, jcc = jcc, qsl = qsl, comment = comment.text
                     ))
                     vm.showToast("更新しました")
                 } else {
@@ -320,7 +329,7 @@ fun EntryFormScreen(
                         callsign = callsign, date = date, time = time,
                         freq = freq, band = band, mode = mode,
                         rstSent = rstSent, rstRcvd = rstRcvd,
-                        name = name, qth = qth, jcc = jcc, qsl = qsl, comment = comment
+                        name = name, qth = qth, jcc = jcc, qsl = qsl, comment = comment.text
                     ))
                     vm.showToast("記録しました")
                     reset(); setNow()
