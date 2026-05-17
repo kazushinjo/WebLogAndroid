@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.weblog.android"
-        minSdk = 26
+        minSdk = 22
         targetSdk = 35
         versionCode = 1
         versionName = "1.08"
@@ -29,6 +29,7 @@ android {
         }
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -58,4 +59,5 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.gson)
     debugImplementation(libs.androidx.ui.tooling)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 }
